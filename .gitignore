@@ -1,3 +1,13 @@
+# General
+data/
+
+# Pipenv
+Pipfile.lock
+
+# Text editors
+*.swp
+*~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
