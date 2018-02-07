@@ -396,3 +396,15 @@ def filter_yelp_data(data):
     data__ = [data_[i] for i in i_data]
 
     return data__
+
+
+def classify_predictions(y, y_hat, q, prefix='X'):
+    """Classify continuous predictions into q quantile-based groups.
+
+    prefix -- Category prefix
+    """
+    categories = [prefix + str(i + 1) for i in range(q)]
+    c, bins = pd.qcut(y, q, retbins=True, labels=categories)
+    bins[0], bins[-1] = -np.inf, np.inf
+    c_hat = pd.cut(y_hat, bins, labels=categories)
+    return c, c_hat

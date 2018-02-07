@@ -105,4 +105,16 @@ if __name__ == '__main__':
 
     To summarize fit:
         summarize_fit(g, data, y)
+
+    To classify predictions:
+        y_hat = g._best_estimator_.predict(data)
+        c, c_hat = fs.classify_predictions(y, y_hat, 2, 'H')
+        c, c_hat = fs.classify_predictions(y, y_hat, 4, 'Q')
+
+    To generate a confusion matrix:
+        confusion_matrix(c, c_hat)
+        print(classification_report(c, c_hat))
+
+    Two-way confusion matrix values:
+        tn, fp, fn, tp = confusion_matrix(c, c_hat).ravel()
     ''')
