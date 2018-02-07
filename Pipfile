@@ -22,3 +22,8 @@ importmagic = "*"
 "autopep8" = "*"
 yapf = "*"
 tqdm = "*"
+
+
+[requires]
+
+python_version = "3.6"
