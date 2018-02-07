@@ -107,14 +107,20 @@ if __name__ == '__main__':
         summarize_fit(g, data, y)
 
     To classify predictions:
-        y_hat = g._best_estimator_.predict(data)
+        y_hat = g.best_estimator_.predict(data)
         c, c_hat = fs.classify_predictions(y, y_hat, 2, 'H')
         c, c_hat = fs.classify_predictions(y, y_hat, 4, 'Q')
 
     To generate a confusion matrix:
+        from sklearn.metrics import confusion_matrix, classification_report
         confusion_matrix(c, c_hat)
         print(classification_report(c, c_hat))
 
     Two-way confusion matrix values:
         tn, fp, fn, tp = confusion_matrix(c, c_hat).ravel()
+
+    To plot confusion matrix:
+        cm = confusion_matrix(c, c_hat)
+        import fooodspace.plot as fsplot
+        fsplot.plot_confusion_matrix(cm, classes=c.categories)
     ''')
