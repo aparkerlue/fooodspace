@@ -136,6 +136,18 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
         return max(ends).strftime('%H:%M')
 
 
+class CategoryFilter(BaseEstimator, TransformerMixin):
+
+    def __init__(self, categories):
+        self.categories = categories[:]
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return [([c for c in t[0] if c in self.categories], ) for t in X]
+
+
 class DictEncoder(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
@@ -309,6 +321,7 @@ if __name__ == '__main__':
     # Create feature set
     tfr_categories = make_pipeline(
         ColumnSelector(['categories']),
+        CategoryFilter(categories=yc['title'].values),
         DictEncoder(),
         DictVectorizer(),
     )
@@ -342,19 +355,20 @@ if __name__ == '__main__':
         tfr_hours_start,
         tfr_hours_end,
     )
-    X = featunion.fit_transform(data)
+    X_ = featunion.fit_transform(data)
 
     # Remove observations with missing data
-    i_data = np.flatnonzero(~np.isnan(X.toarray()).any(axis=1))
+    i_data = np.flatnonzero(~np.isnan(X_.toarray()).any(axis=1))
     logging.info(
         'Found {:,} restaurants with full feature set'
         .format(len(i_data))
     )
-    X = X[i_data]
+    X = X_[i_data]
+
+    # Ensure that feature columns are unique
+    assert X.shape[1] == len(set(tuple(np.squeeze(c.toarray())) for c in X.T))
 
     # Create dependent variable
     logging.info('Computing revenue proxy...')
     y = compute_revenue_proxy([data[i] for i in i_data])
     assert sum(np.isnan(y)) == 0
-
-    # TODO: Check if we have redundant category values
