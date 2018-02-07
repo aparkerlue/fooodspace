@@ -11,6 +11,7 @@ ujson = "*"
 scipy = "*"
 pandas = "*"
 sklearn = "*"
+bokeh = "*"
 
 
 [dev-packages]
