@@ -124,3 +124,46 @@ if __name__ == '__main__':
         import fooodspace.plot as fsplot
         fsplot.plot_confusion_matrix(cm, classes=c.categories)
     ''')
+
+    import sys
+    sys.exit(0)
+
+    # Load grid search and generate revenue proxy predictions
+    g = joblib.load('checkpoints/g-1-ensemble.pkl')
+    y_hat = g.best_estimator_.predict(data)
+
+    # Print two-way classification report
+    from sklearn.metrics import classification_report
+    c, c_hat = fs.classify_predictions(y, y_hat, 2, 'H')
+    print(classification_report(c, c_hat))
+
+    # Print four-way classification report
+    c, c_hat = fs.classify_predictions(y, y_hat, 4, 'Q')
+    print(classification_report(c, c_hat))
+
+    # Plot two-way confusion matrix
+    from sklearn.metrics import confusion_matrix
+    c, c_hat = fs.classify_predictions(y, y_hat, 2, 'H')
+    cm = confusion_matrix(c, c_hat)
+    import matplotlib.pyplot as plt
+    import fooodspace.plot as fsplot
+    plt.figure()
+    fsplot.plot_confusion_matrix(
+        cm,
+        classes=['Below median', 'Above median'],
+        title='Restaurant revenue proxy',
+    )
+    plt.show()
+    # plt.savefig('confusion-matrix-2.svg')
+
+    # Plot four-way confusion matrix
+    c, c_hat = fs.classify_predictions(y, y_hat, 4, 'Q')
+    cm = confusion_matrix(c, c_hat)
+    plt.figure()
+    fsplot.plot_confusion_matrix(
+        cm,
+        classes=['1st qrtl', '2nd qrtl', '3rd qrtl', '4th qrtl'],
+        title='Restaurant revenue proxy',
+    )
+    plt.show()
+    # plt.savefig('confusion-matrix-4.svg')
