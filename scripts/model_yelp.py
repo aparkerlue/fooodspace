@@ -1,3 +1,4 @@
+from datetime import datetime, time
 import gzip
 import logging
 import os
@@ -66,11 +67,73 @@ class ColumnSelector(BaseEstimator, TransformerMixin):
         elif colname == 'display_address':
             x = record['location'][colname]
             return ', '.join(x)
+        elif colname == 'hours_start':
+            # Find earliest opening and latest closing times across
+            # all days of the week.
+            try:
+                x = record['hours']
+            except KeyError:
+                hours = None
+            else:
+                hours = self._yelp_hours_get_min_start(x[0]['open'])
+            return np.nan if self.pd_out and hours is None else hours
+        elif colname == 'hours_end':
+            try:
+                x = record['hours']
+            except KeyError:
+                hours = None
+            else:
+                hours = self._yelp_hours_get_max_end(x[0]['open'])
+            return np.nan if self.pd_out and hours is None else hours
         else:
             try:
                 return record[colname]
             except KeyError:
                 return np.nan
+
+    @staticmethod
+    def _yelp_hours_get_min_start(L_open):
+        """Find minimum start time from Yelp's `open' list.
+
+        The `open' list is inside the `hours' field of a business
+        entry.
+
+        `day' 0 is Monday, and `day' 6 is Sunday.
+
+        Here's an example:
+
+        'hours': [{'hours_type': 'REGULAR',
+          'is_open_now': True,
+          'open': [{'day': 0, 'end': '2300', 'is_overnight': False, 'start': '0800'},
+           {'day': 1, 'end': '2300', 'is_overnight': False, 'start': '0800'},
+           {'day': 2, 'end': '2300', 'is_overnight': False, 'start': '0800'},
+           {'day': 3, 'end': '2300', 'is_overnight': False, 'start': '0800'},
+           {'day': 4, 'end': '2300', 'is_overnight': False, 'start': '0800'},
+           {'day': 5, 'end': '2300', 'is_overnight': False, 'start': '0900'},
+           {'day': 6, 'end': '2200', 'is_overnight': False, 'start': '0900'}]}]
+        """
+        starts = []
+        for d in L_open:
+            try:
+                start = d['start']
+            except KeyError:
+                continue
+            x = datetime.strptime(start, '%H%M').time()
+            starts.append(x)
+        return min(starts).strftime('%H:%M')
+
+    @staticmethod
+    def _yelp_hours_get_max_end(L_open):
+        """Find maximum end time from Yelp's `open' list."""
+        ends = []
+        for d in L_open:
+            try:
+                end = d['end']
+            except KeyError:
+                continue
+            x = datetime.strptime(end, '%H%M').time()
+            ends.append(x)
+        return max(ends).strftime('%H:%M')
 
 
 class DictEncoder(BaseEstimator, TransformerMixin):
@@ -104,6 +167,63 @@ class AvenueParseTransformer(BaseEstimator, TransformerMixin):
                 x_ = 0 if re.search('(Ave|Broadway)', x[0]) is None else 1
             else:
                 raise ValueError('Received list of non-unit-length tuples')
+            X_.append((x_, ))
+        return X_
+
+
+def time_diff_abs(x, y):
+    """Return the absolute difference between two time objects."""
+    x, y = sorted([x, y], reverse=True)
+    d = x.hour - y.hour + (x.minute - y.minute) / 60
+    return time(int(d), round((d - int(d)) * 60))
+
+
+class HourStartTransformer(BaseEstimator, TransformerMixin):
+    """Transform start times into hours before noon."""
+
+    MAX_START = time(12, 0)
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X_ = []
+        for x in X:
+            t = x[0]
+            if t is None:
+                x_ = np.nan
+            else:
+                t_ = datetime.strptime(t, '%H:%M').time()
+                if t_ < self.MAX_START:
+                    dt = time_diff_abs(t_, self.MAX_START)
+                    x_ = dt.hour + dt.minute / 60
+                else:
+                    x_ = 0.0
+            X_.append((x_, ))
+        return X_
+
+
+class HourEndTransformer(BaseEstimator, TransformerMixin):
+    """Transform end times into hours after 19:00."""
+
+    MIN_END = time(19, 0)
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X_ = []
+        for x in X:
+            t = x[0]
+            if t is None:
+                x_ = np.nan
+            else:
+                t_ = datetime.strptime(t, '%H:%M').time()
+                if t_ > self.MIN_END:
+                    dt = time_diff_abs(t_, self.MIN_END)
+                    x_ = dt.hour + dt.minute / 60
+                else:
+                    x_ = 0.0
             X_.append((x_, ))
         return X_
 
@@ -149,7 +269,7 @@ def compute_revenue_proxy(data):
         ) if price_symbol is not None else np.nan
         review_count = r.at['review_count']
         y.append(price_avg * review_count)
-    return y
+    return np.asarray(y, dtype=float)
 
 
 if __name__ == '__main__':
@@ -201,6 +321,14 @@ if __name__ == '__main__':
         DictEncoder(),
         DictVectorizer(),
     )
+    tfr_hours_start = make_pipeline(
+        ColumnSelector(['hours_start']),
+        HourStartTransformer(),
+    )
+    tfr_hours_end = make_pipeline(
+        ColumnSelector(['hours_end']),
+        HourEndTransformer(),
+    )
     featunion = make_union(
         ColumnSelector([
             'latitude',
@@ -211,6 +339,8 @@ if __name__ == '__main__':
         tfr_avenues,
         tfr_categories,
         tfr_transactions,
+        tfr_hours_start,
+        tfr_hours_end,
     )
     X = featunion.fit_transform(data)
 
@@ -225,9 +355,6 @@ if __name__ == '__main__':
     # Create dependent variable
     logging.info('Computing revenue proxy...')
     y = compute_revenue_proxy([data[i] for i in i_data])
+    assert sum(np.isnan(y)) == 0
 
-    # Features to add:
-    # - Number of words in name
-    # - Hours
-
-    # TODO: Check if we have redundantcategory values
+    # TODO: Check if we have redundant category values
