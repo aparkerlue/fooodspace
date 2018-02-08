@@ -2,6 +2,7 @@
 checkpoints/
 data/
 plots/
+results/
 
 # Pipenv
 Pipfile.lock

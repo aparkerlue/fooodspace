@@ -151,10 +151,10 @@ if __name__ == '__main__':
     fsplot.plot_confusion_matrix(
         cm,
         classes=['Below median', 'Above median'],
-        title='Restaurant revenue proxy',
+        title='Restaurant count by proxy revenues',
     )
-    plt.show()
-    # plt.savefig('confusion-matrix-2.svg')
+    # plt.show()
+    plt.savefig('confusion-matrix-2.svg')
 
     # Plot four-way confusion matrix
     c, c_hat = fs.classify_predictions(y, y_hat, 4, 'Q')
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     fsplot.plot_confusion_matrix(
         cm,
         classes=['1st qrtl', '2nd qrtl', '3rd qrtl', '4th qrtl'],
-        title='Restaurant revenue proxy',
+        title='Restaurant count by proxy revenues',
     )
-    plt.show()
-    # plt.savefig('confusion-matrix-4.svg')
+    # plt.show()
+    plt.savefig('confusion-matrix-4.svg')
