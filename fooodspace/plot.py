@@ -2,6 +2,15 @@ import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 
+from bokeh.io import output_file, show
+from bokeh.models import (
+    GMapPlot, GMapOptions, ColumnDataSource, Circle, Range1d,
+    PanTool, BoxZoomTool, BoxSelectTool, WheelZoomTool, ResetTool, SaveTool,
+)
+
+from fooodspace.data import yelp_businesses_to_dataframe
+from fooodspace.settings import GOOGLE_API_KEY
+
 
 def plot_confusion_matrix(cm, classes,
                           normalize=False,
@@ -39,3 +48,38 @@ def plot_confusion_matrix(cm, classes,
     plt.tight_layout()
     plt.ylabel('Observed values')
     plt.xlabel('Predicted values')
+
+
+def plot_restaurant_map(data, y):
+    df = yelp_businesses_to_dataframe(data, y)
+
+    plot = GMapPlot(
+        api_key=GOOGLE_API_KEY,
+        x_range=Range1d(),
+        y_range=Range1d(),
+        map_options=GMapOptions(
+            lat=40.735, lng=-73.990, map_type="roadmap", zoom=13,
+        ),
+    )
+    plot.toolbar.logo = None
+    plot.toolbar_location = 'above'
+    plot.title.text = "NYC restaurant sample ({:,})".format(len(df))
+    plot.add_tools(
+        PanTool(), BoxZoomTool(), BoxSelectTool(),
+        WheelZoomTool(), ResetTool(), SaveTool(),
+    )
+
+    source = ColumnDataSource(
+        data=df[['lat', 'lon', 'catcolor', 'revsize']],
+    )
+    circle = Circle(
+        x="lon", y="lat",
+        line_color='black',
+        fill_color='catcolor',
+        fill_alpha=0.8,
+        size='revsize',
+    )
+    plot.add_glyph(source, circle)
+
+    output_file("plots/restaurant_plot.html")
+    show(plot)

@@ -13,6 +13,7 @@ pandas = "*"
 sklearn = "*"
 matplotlib = "*"
 bokeh = "*"
+python-dotenv = "*"
 
 
 [dev-packages]

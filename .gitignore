@@ -1,6 +1,7 @@
 # General
 checkpoints/
 data/
+plots/
 
 # Pipenv
 Pipfile.lock
